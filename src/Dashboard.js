@@ -117,7 +117,8 @@ const filteredRiderProfilesWithSearch = filterProfiles(riderProfiles);
 
 const handleReject = async (profile) => {
   try {
-    const response = await fetch(`http://localhost:4000/reject/rejectVerification/${profile._id}`, {
+    // Step 1: Update the verification status to "rejected"
+    const updateResponse = await fetch(`http://localhost:4000/reject/rejectVerification/${profile._id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -125,22 +126,38 @@ const handleReject = async (profile) => {
       body: JSON.stringify({ verification: 'rejected' }),
     });
 
-    const data = await response.json();
+    const updateData = await updateResponse.json();
 
-    if (response.ok) {
+    if (!updateResponse.ok) {
+      console.error('Error updating verification status:', updateData.message);
+      alert(`Error updating verification status: ${updateData.message}`);
+      return;
+    }
+
+    // Step 2: Permanently delete the driver after updating verification status
+    const deleteResponse = await fetch(`http://localhost:4000/reject/deleteDriver/${profile._id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const deleteData = await deleteResponse.json();
+
+    if (deleteResponse.ok) {
       // Remove the driver from pending verifications
       setPendingVerifications((prev) =>
         prev.filter((driver) => driver._id !== profile._id)
       );
 
-      alert('Driver Rejected and status updated to "rejected".');
+      alert('Driver Rejected and permanently deleted from the database.');
     } else {
-      console.error('Error:', data.message);
-      alert(`Error: ${data.message}`);
+      console.error('Error deleting driver:', deleteData.message);
+      alert(`Error deleting driver: ${deleteData.message}`);
     }
   } catch (error) {
-    console.error('Error rejecting driver:', error);
-    alert('An error occurred while rejecting the driver.');
+    console.error('Error during rejection process:', error);
+    alert('An error occurred while processing the rejection.');
   }
 };
 
